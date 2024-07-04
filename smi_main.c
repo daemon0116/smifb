@@ -549,6 +549,21 @@ void smi_gem_free_object(struct drm_gem_object *obj)
 		smi_bo_unref(&smi_bo);
 	}
 }
+#else
+
+void smi_gem_free_object(struct drm_gem_object *obj)
+{
+
+        struct drm_gem_vram_object *gbo;
+        gbo = drm_gem_vram_of_gem(obj);
+        if (gbo) {
+               if (gbo->bo.base.import_attach)
+                       drm_prime_gem_destroy(&gbo->bo.base, gbo->bo.sg);
+
+               drm_gem_vram_put(gbo);
+       }
+}
+
 #endif
 
 /* Unmap the framebuffer from the core and release the memory */
