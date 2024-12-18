@@ -29,7 +29,7 @@
 #endif
 
 
-#include <drm/drm_gem_shmem_helper.h>
+#include <drm/drm_gem_cma_helper.h>
 
 #include <drm/drm_probe_helper.h>
 #include <drm/drm_crtc_helper.h>
@@ -462,7 +462,7 @@ static int smi_dumb_create_align(struct drm_file *file, struct drm_device *dev,
 {
 
 	args->width = ALIGN (args->width , 8);	
-	return drm_gem_shmem_dumb_create(file, dev,  args);
+	return drm_gem_cma_dumb_create(file, dev,  args);
 }
 
 
@@ -488,7 +488,7 @@ static struct pci_driver smi_pci_driver = {
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 5, 0)
 DEFINE_DRM_GEM_FOPS(smi_driver_fops);
 #else
-DEFINE_DRM_GEM_SHMEM_FOPS(smi_driver_fops);
+DEFINE_DRM_GEM_CMA_FOPS(smi_driver_fops);
 #endif
 
 
@@ -507,7 +507,13 @@ static struct drm_driver driver = {
 	.minor = DRIVER_MINOR,
 	.patchlevel = DRIVER_PATCHLEVEL,
 #if LINUX_VERSION_CODE > KERNEL_VERSION(5, 7, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
-	.gem_create_object = drm_gem_shmem_create_object_cached,
+	.gem_create_object = drm_gem_cma_create_object_default_funcs,
+#else	
+	.gem_free_object_unlocked = drm_gem_cma_free_object,
+	.gem_vm_ops = &drm_gem_cma_vm_ops,
+	.gem_prime_get_sg_table = drm_gem_cma_prime_get_sg_table,
+	.gem_prime_vmap = drm_gem_cma_prime_vmap,
+	.gem_prime_vunmap = drm_gem_cma_prime_vunmap,
 #endif
 	.dumb_create		  = smi_dumb_create_align,
 #if 0
@@ -534,7 +540,8 @@ static struct drm_driver driver = {
 	.prime_handle_to_fd = drm_gem_prime_handle_to_fd,
 	.prime_fd_to_handle = drm_gem_prime_fd_to_handle,
 #endif
-	.gem_prime_import_sg_table = drm_gem_shmem_prime_import_sg_table,
+	.gem_prime_import_sg_table = drm_gem_cma_prime_import_sg_table,
+	.gem_prime_mmap = drm_gem_cma_prime_mmap,
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
 	.debugfs_init = smi_debugfs_init,
 #endif

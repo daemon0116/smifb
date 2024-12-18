@@ -13,7 +13,7 @@
 #include <drm/drm_crtc.h>
 #include <drm/drm_damage_helper.h>
 #include <drm/drm_format_helper.h>
-#include <drm/drm_gem_shmem_helper.h>
+#include <drm/drm_gem_cma_helper.h>
 
 
 
@@ -107,12 +107,12 @@ static void smi_cursor_atomic_update(struct drm_plane *plane, struct drm_plane_s
 #if	LINUX_VERSION_CODE < KERNEL_VERSION(5, 18, 0)	
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
 	struct dma_buf_map map;
-	struct drm_gem_shmem_object *shem;
+	struct drm_gem_cma_object *cma;
 	int ret;
-	shem = to_drm_gem_shmem_obj(fb->obj[0]);	
-	ret = drm_gem_shmem_vmap(shem, &map);
+	cma = to_drm_gem_cma_obj(fb->obj[0]);
+	ret = drm_gem_cma_prime_vmap(cma, &map);
 #else
-	const u8 *src = drm_gem_shmem_vmap(fb->obj[0]);
+	const u8 *src = drm_gem_cma_prime_vmap(fb->obj[0]);
 #endif
 #else
 	struct drm_shadow_plane_state *shadow_plane_state = to_drm_shadow_plane_state(plane_state);
@@ -260,30 +260,29 @@ void smi_handle_damage(struct smi_plane *smi_plane,
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(6, 0, 0)	
 	void *dst = smi_plane->vaddr;
 	struct iosys_map map;
-	drm_gem_shmem_vmap(to_drm_gem_shmem_obj(fb->obj[0]), &map);
+	drm_gem_cma_prime_vmap(to_drm_gem_cma_obj(fb->obj[0]), &map);
 	dst += drm_fb_clip_offset(fb->pitches[0], fb->format, clip);
 	drm_fb_memcpy_toio(dst, fb->pitches[0], map.vaddr, fb, clip);
-	drm_gem_shmem_vunmap(to_drm_gem_shmem_obj(fb->obj[0]), &map);
+	/* drm_gem_cma_prime_vunmap(to_drm_gem_cma_obj(fb->obj[0]), &map);// There is not need vunmap??? memleak risk??? */
 #elif LINUX_VERSION_CODE >= KERNEL_VERSION(5, 15, 0)
 	struct dma_buf_map map;
-	struct drm_gem_shmem_object* shem;
+	struct drm_gem_cma_object* cma;
 	int ret;
-	shem = to_drm_gem_shmem_obj(fb->obj[0]);
-	ret = drm_gem_shmem_vmap(shem,&map);
+	cma = to_drm_gem_cma_obj(fb->obj[0]);
+	ret = drm_gem_cma_prime_vmap(cma,&map);
 	drm_fb_memcpy_dstclip(smi_plane->vaddr, fb->pitches[0],map.vaddr, fb, clip);
-	drm_gem_shmem_vunmap(shem, &map);
+	/* drm_gem_cma_prime_vunmap(cma, &map); // There is not need vunmap??? memleak risk??? */
 #else
 	void *vmap;
 
-	vmap = drm_gem_shmem_vmap(fb->obj[0]);
+	vmap = drm_gem_cma_prime_vmap(fb->obj[0]);
 	if (!vmap) {
 		pr_err("vmap NULL\n");
-		return; /* BUG: SHMEM BO should always be vmapped */
+		return; /* BUG: CMA BO should always be vmapped */
 	}
 
 	drm_fb_memcpy_dstclip(smi_plane->vaddr, vmap, fb, clip);
-	drm_gem_shmem_vunmap(fb->obj[0], vmap);
-	
+	/* drm_gem_cma_prime_vunmap(fb->obj[0], vmap); // There is not need vunmap??? memleak risk??? */
 #endif
 }
 
@@ -342,7 +341,7 @@ static void smi_primary_plane_atomic_update(struct drm_plane *plane, struct drm_
 
 	/* primary plane offset */
 	if(disp_ctrl == 0) 
-		dst_off = 0;  /* with shmem, the primary plane is always at offset 0 */
+		dst_off = 0;  /* with cma, the primary plane is always at offset 0 */
 	if(disp_ctrl == 1) {
 		if (sdev->specId == SPC_SM768) 
 				dst_off = SM768_MAX_MODE_SIZE; //the second DC is at offset 32MB
