@@ -53,6 +53,8 @@ default:
 		$(MAKE) -C $(KERNELDIR) M=$(PWD) modules
 install:default
 		$(MAKE) -C $(KERNELDIR) M=$(PWD) INSTALL_MOD_PATH=$(DESTDIR) INSTALL_MOD_DIR=$(MOD_KERNEL_PATH) modules_install
+		cp smifb.ko /lib/modules/$(shell uname -r)/kernel/drivers/gpu/drm/smidrm/
+		cd /lib/modules/$(shell uname -r)/kernel/drivers/gpu/drm/smidrm/ && depmod -a && update-initramfs -u
 		$(DEPMOD)
 
 uninstall:
