@@ -547,7 +547,7 @@ static struct drm_driver driver = {
 	.prime_handle_to_fd = drm_gem_prime_handle_to_fd,
 	.prime_fd_to_handle = drm_gem_prime_fd_to_handle,
 #endif
-	.gem_prime_import_sg_table = drm_gem_cma_prime_import_sg_table,
+	.gem_prime_import_sg_table = drm_gem_cma_prime_import_sg_table_vmap,
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
 	.debugfs_init = smi_debugfs_init,
 #endif
