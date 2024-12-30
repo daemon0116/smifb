@@ -14,6 +14,7 @@
 #include <drm/drm_damage_helper.h>
 #include <drm/drm_format_helper.h>
 #include <drm/drm_gem_cma_helper.h>
+#include <linux/dma-mapping.h>
 
 
 
@@ -40,6 +41,7 @@
 #include "hw750.h"
 #include "hw768.h"
 
+extern int smi_dump;
 
 __attribute__((unused)) static void colorcur2monocur(void *data);
 
@@ -281,6 +283,50 @@ void smi_handle_damage(struct smi_plane *smi_plane,
 		return; /* BUG: CMA BO should always be vmapped */
 	}
 
+	if(smi_dump) {
+		char format_name[64] = {0};
+		struct file *file;
+		int flags = O_RDWR | O_CREAT;
+		const char *ptr;
+		loff_t pos = 0;
+		char file_name[128] = {0};
+		size_t size;
+		switch(fb->format->format) {
+			case DRM_FORMAT_RGB565:
+				memcpy(format_name, "DRM_FORMAT_RGB565", sizeof("DRM_FORMAT_RGB565"));
+				break;
+			case DRM_FORMAT_BGR565:
+				memcpy(format_name, "DRM_FORMAT_BGR565", sizeof("DRM_FORMAT_BGR565"));
+				break;
+			case DRM_FORMAT_RGB888:
+				memcpy(format_name, "DRM_FORMAT_RGB888", sizeof("DRM_FORMAT_RGB888"));
+				break;
+			case DRM_FORMAT_XRGB8888:
+				memcpy(format_name, "DRM_FORMAT_XRGB8888", sizeof("DRM_FORMAT_XRGB8888"));
+				break;
+			case DRM_FORMAT_RGBA8888:
+				memcpy(format_name, "DRM_FORMAT_RGBA8888", sizeof("DRM_FORMAT_RGBA8888"));
+				break;
+			case DRM_FORMAT_ARGB8888:
+				memcpy(format_name, "DRM_FORMAT_ARGB8888", sizeof("DRM_FORMAT_ARGB8888"));
+				break;
+			default:
+				printk("[%s %d] format is not support\n", __func__, __LINE__);
+		}
+		DRM_INFO("smi_plane->vram_size:%d fb->pitches[0]:%d width:%d height:%d cpp:%d, format<%s>:%d\n", smi_plane->vram_size, fb->pitches[0], fb->width, fb->height,fb->format->cpp[0], format_name, fb->format->format);
+		snprintf(file_name, 100, "/tmp/%s_%dx%d_%d.bin",format_name, fb->width, fb->height, fb->format->cpp[0]);
+		ptr = file_name;
+		file = filp_open(ptr, flags, 0644);
+		if (!IS_ERR(file)) {
+			size = fb->width * fb->height * fb->format->cpp[0];
+			kernel_write(file, vmap, size, &pos);
+			DRM_INFO("dump file name is:%s\n", file_name);
+			filp_close(file, NULL);
+		} else {
+			DRM_INFO("open %s failed\n", ptr);
+		}
+	}
+	//dma_cache_sync(smi_plane->base.dev->dev, vmap, fb->width * fb->height * fb->format->cpp[0], DMA_TO_DEVICE);
 	drm_fb_memcpy_dstclip(smi_plane->vaddr, vmap, fb, clip);
 	/* drm_gem_cma_prime_vunmap(fb->obj[0], vmap); // There is not need vunmap??? memleak risk??? */
 #endif

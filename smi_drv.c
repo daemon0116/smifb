@@ -55,6 +55,7 @@ int hwi2c_en = 0;
 int swcur_en = 0;
 int edid_mode = 1;
 int smi_debug = 0;
+int smi_dump = 0;
 int lcd_scale = 0;
 int pwm_ctrl = 0;
 int	ddr_retrain = 0;
@@ -85,6 +86,8 @@ MODULE_PARM_DESC(edidmode, "Use Monitor EDID mode timing, 0 = Driver build-in mo
 module_param_named(edidmode, edid_mode, int, 0400);
 MODULE_PARM_DESC(debug, "Driver debug log enable, 0 = disable 1 = enable (default:0)");
 module_param_named(debug, smi_debug, int, 0400);
+MODULE_PARM_DESC(debug, "Driver dump plane buffer enable, 0 = disable 1 = enable (default:0)");
+module_param_named(dump, smi_dump, int, 0400);
 MODULE_PARM_DESC(lcdscale, "LCD(LVDS) scale  enable, 0 = disable 1 = enable (default:0)");
 module_param_named(lcdscale, lcd_scale, int, 0400);
 MODULE_PARM_DESC(pwm, "PWM Value, 0 = disable (default:0) bit 0-3: PWM 0/1/2 bit4-7: PWM Divider bit8-19: PWM Low Counter bit20-31: PWM High Counter");

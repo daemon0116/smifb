@@ -7,9 +7,11 @@
 #include "ddk768/ddk768_pwm.h"
 #include <drm/drm_debugfs.h>
 #include "smi_debugfs.h"
+#include <linux/file.h>
 
 extern int pwm_ctrl;
 extern int smi_debug;
+extern int smi_dump;
 extern int force_connect;
 
 
@@ -148,6 +150,7 @@ static const struct file_operations reg_fops = {
 	debugfs_create_file_unsafe("pwm_ctl", S_IRUGO | S_IWUSR, minor->debugfs_root, &pwm_ctrl, &fops_pwm);
 
 	debugfs_create_u32("smi_debug", S_IRUGO | S_IWUSR, minor->debugfs_root, &smi_debug);
+	debugfs_create_u32("smi_dump", S_IRUGO | S_IWUSR, minor->debugfs_root, &smi_dump);
 
 	debugfs_create_u32("nopnp", S_IRUGO | S_IWUSR, minor->debugfs_root, &force_connect);
 
