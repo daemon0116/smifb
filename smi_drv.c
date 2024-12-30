@@ -509,11 +509,15 @@ static struct drm_driver driver = {
 #if LINUX_VERSION_CODE > KERNEL_VERSION(5, 7, 0) && LINUX_VERSION_CODE < KERNEL_VERSION(5, 10, 0)
 	.gem_create_object = drm_gem_cma_create_object_default_funcs,
 #else	
+#if 0
+	.gem_create_object = drm_cma_gem_create_object_default_funcs,
+#else
 	.gem_free_object_unlocked = drm_gem_cma_free_object,
 	.gem_vm_ops = &drm_gem_cma_vm_ops,
 	.gem_prime_get_sg_table = drm_gem_cma_prime_get_sg_table,
 	.gem_prime_vmap = drm_gem_cma_prime_vmap,
 	.gem_prime_vunmap = drm_gem_cma_prime_vunmap,
+#endif
 #endif
 	.dumb_create		  = smi_dumb_create_align,
 #if 0
@@ -524,7 +528,7 @@ static struct drm_driver driver = {
 #endif
 #endif
 #if LINUX_VERSION_CODE < KERNEL_VERSION(6, 6, 0)
-	.gem_prime_mmap		  = drm_gem_prime_mmap,
+	.gem_prime_mmap = drm_gem_cma_prime_mmap,
 #endif
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 5, 0)
 	.enable_vblank = smi_enable_vblank,
@@ -541,7 +545,6 @@ static struct drm_driver driver = {
 	.prime_fd_to_handle = drm_gem_prime_fd_to_handle,
 #endif
 	.gem_prime_import_sg_table = drm_gem_cma_prime_import_sg_table,
-	.gem_prime_mmap = drm_gem_cma_prime_mmap,
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 6, 0)
 	.debugfs_init = smi_debugfs_init,
 #endif
