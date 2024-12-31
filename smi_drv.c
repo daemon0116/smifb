@@ -40,6 +40,10 @@
 #include "hw768.h"
 
 #include "smi_debugfs.h"
+#include <drm/drm_file.h>
+#include <drm/drm_ioctl.h>
+#include <drm/drm_gem.h>
+
 
 int smi_modeset = -1;
 int smi_indent = 0;
@@ -486,12 +490,76 @@ static struct pci_driver smi_pci_driver = {
 	.remove = smi_pci_remove,
 	.driver.pm = &smi_pm_ops,
 };
+static int drm_gem_cma_mmap_obj(struct drm_gem_cma_object *cma_obj,
+                struct vm_area_struct *vma)
+{
+    int ret;
 
+    /*
+     * Clear the VM_PFNMAP flag that was set by drm_gem_mmap(), and set the
+     * vm_pgoff (used as a fake buffer offset by DRM) to 0 as we want to map
+     * the whole buffer.
+     */
+    vma->vm_flags &= ~VM_PFNMAP;
+    vma->vm_pgoff = 0;
+    //printk(KERN_INFO "  Raw value: 0x%lx\n", pgprot_val(prot));
+    vma->vm_page_prot = vm_get_page_prot(vma->vm_flags);
+    //printk(KERN_INFO "  Raw value: 0x%lx\n", pgprot_val(prot));
 
+    ret = dma_mmap_attrs(cma_obj->base.dev->dev, vma, cma_obj->vaddr,
+              cma_obj->paddr, vma->vm_end - vma->vm_start, 0);
+    if (ret)
+        drm_gem_vm_close(vma);
+
+    return ret;
+}
+
+int smi_drm_gem_cma_mmap(struct file *filp, struct vm_area_struct *vma)
+{
+    struct drm_gem_cma_object *cma_obj;
+    struct drm_gem_object *gem_obj;
+    int ret;
+
+    ret = drm_gem_mmap(filp, vma);
+    if (ret)
+        return ret;
+
+    gem_obj = vma->vm_private_data;
+    cma_obj = to_drm_gem_cma_obj(gem_obj);
+
+    return drm_gem_cma_mmap_obj(cma_obj, vma);
+}
+
+int smi_drm_gem_cma_prime_mmap(struct drm_gem_object *obj,
+               struct vm_area_struct *vma)
+{
+    struct drm_gem_cma_object *cma_obj;
+    int ret;
+
+    ret = drm_gem_mmap_obj(obj, obj->size, vma);
+    if (ret < 0)
+        return ret;
+
+    cma_obj = to_drm_gem_cma_obj(obj);
+    return drm_gem_cma_mmap_obj(cma_obj, vma);
+}
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(5, 5, 0)
 DEFINE_DRM_GEM_FOPS(smi_driver_fops);
 #else
-DEFINE_DRM_GEM_CMA_FOPS(smi_driver_fops);
+//DEFINE_DRM_GEM_CMA_FOPS(smi_driver_fops);
+static const struct file_operations smi_driver_fops = {
+    .owner      = THIS_MODULE,
+    .open       = drm_open,
+    .release    = drm_release,
+    .unlocked_ioctl = drm_ioctl,
+    .compat_ioctl   = drm_compat_ioctl,
+    .poll       = drm_poll,
+    .read       = drm_read,
+    .llseek     = noop_llseek,
+    .mmap       = smi_drm_gem_cma_mmap,
+    DRM_GEM_CMA_UNMAPPED_AREA_FOPS
+};
+
 #endif
 
 
@@ -531,7 +599,7 @@ static struct drm_driver driver = {
 #endif
 #endif
 #if LINUX_VERSION_CODE < KERNEL_VERSION(6, 6, 0)
-	.gem_prime_mmap = drm_gem_cma_prime_mmap,
+	.gem_prime_mmap = smi_drm_gem_cma_prime_mmap,
 #endif
 #if LINUX_VERSION_CODE < KERNEL_VERSION(5, 5, 0)
 	.enable_vblank = smi_enable_vblank,
