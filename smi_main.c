@@ -198,9 +198,9 @@ static void smi_vram_fini(struct smi_device *cdev)
 #endif
 
 	iounmap(cdev->rmmio);
-	iounmap(cdev->vram);
+	//iounmap(cdev->vram);
 	cdev->rmmio = NULL;
-	cdev->vram = NULL;
+	//cdev->vram = NULL;
 
 }
 
